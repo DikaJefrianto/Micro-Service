@@ -1,97 +1,65 @@
 package com.dika.order.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
+import com.dika.order.cqrs.command.CreateOrderCommand; // Import Command
 import com.dika.order.model.Order;
-import com.dika.order.repository.OrderRepository;
-import com.dika.order.vo.Pelanggan;
-import com.dika.order.vo.Produk;
-import com.dika.order.vo.ResponseTemplate;
+import com.dika.order.repository.query.OrderQueryRepository; // Repository MySQL (WRITE)
+import com.dika.order.config.RabbitMQConfig;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 @Service
+@RequiredArgsConstructor
 public class OrderService {
-    @Autowired
-    private DiscoveryClient discoveryClient;
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderQueryRepository orderQueryRepository; // MySQL Repository
+    private final RabbitTemplate rabbitTemplate;
 
-    @Autowired
-    private RestTemplate restTemplate;
-
-    // ✅ Simpan order
-    public Order createOrder(Order order) {
-        return orderRepository.save(order);
-    }
-
-    // ✅ Ambil semua order tanpa detail
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
-    }
-
-    // ✅ Ambil 1 order by ID
-    public Order getOrderById(Long id) {
-        return orderRepository.findById(id).orElse(null);
-    }
-
-    // ✅ Ambil 1 order lengkap dengan produk & pelanggan
-    public ResponseTemplate getOrderWithDetailsById(Long id) {
-        Order order = getOrderById(id);
-        if (order == null) {
-            return null;
+    // 🚨 FIX: Ubah signature method agar menerima CreateOrderCommand
+    @Transactional("queryTransactionManager") // Transaksi MySQL (WRITE)
+    public Order createOrder(CreateOrderCommand command) {
+        
+        // 1. Konversi Command (DTO) menjadi Entitas (Order)
+        Order order = new Order();
+        order.setProdukId(command.getProdukId());
+        order.setPelangganId(command.getPelangganId());
+        order.setJumlah(command.getJumlah());
+        
+        // Konversi String tanggal dari Command ke LocalDate di Entitas
+        try {
+            order.setTanggal(LocalDate.parse(command.getTanggal()));
+        } catch (Exception e) {
+            // Tangani error jika format tanggal salah, atau gunakan format default
+            order.setTanggal(LocalDate.now()); 
         }
 
-        // --- Produk ---
-        List<ServiceInstance> produkInstances = discoveryClient.getInstances("produk-service");
-        if (produkInstances.isEmpty()) {
-            throw new IllegalStateException("Service PRODUK tidak tersedia");
-        }
-        Produk produk = restTemplate.getForObject(
-                produkInstances.get(0).getUri() + "/api/produk/" + order.getProdukId(),
-                Produk.class);
+        order.setStatus(command.getStatus());
+        order.setTotal(command.getTotal());
+        
+        // 2. Simpan Entitas ke MySQL (Write DB)
+        Order savedOrder = orderQueryRepository.save(order); 
 
-        // --- Pelanggan ---
-        List<ServiceInstance> pelangganInstances = discoveryClient.getInstances("PELANGGAN");
-        if (pelangganInstances.isEmpty()) {
-            throw new IllegalStateException("Service PELANGGAN tidak tersedia");
-        }
-        Pelanggan pelanggan = restTemplate.getForObject(
-                pelangganInstances.get(0).getUri() + "/api/pelanggan/" + order.getPelangganId(),
-                Pelanggan.class);
+        // 3. Terbitkan Event ke RabbitMQ
+        rabbitTemplate.convertAndSend(
+            RabbitMQConfig.EXCHANGE_NAME, 
+            RabbitMQConfig.ROUTING_KEY_ORDER_CREATED, 
+            savedOrder 
+        ); 
+        
+        System.out.println("✅ Order ID " + savedOrder.getId() + " disimpan ke MySQL dan Event diterbitkan.");
 
-        // --- Bungkus ke ResponseTemplate ---
-        ResponseTemplate response = new ResponseTemplate();
-        response.setOrder(order);
-        response.setProduk(produk);
-        response.setPelanggan(pelanggan);
-
-        return response;
+        return savedOrder;
     }
 
-    // ✅ Ambil semua order lengkap dengan produk & pelanggan
-    public List<ResponseTemplate> getAllOrdersWithDetails() {
-        List<ResponseTemplate> responseList = new ArrayList<>();
-        List<Order> orders = orderRepository.findAll();
-
-        for (Order order : orders) {
-            ResponseTemplate response = getOrderWithDetailsById(order.getId());
-            if (response != null) {
-                responseList.add(response);
-            }
-        }
-
-        return responseList;
-    }
-
-    // ✅ Hapus order
+    // Metode deleteOrder jika ada
     public void deleteOrder(Long id) {
-        orderRepository.deleteById(id);
+        // Logika delete (hanya di MySQL)
+        orderQueryRepository.deleteById(id);
+        // Pertimbangkan menerbitkan OrderDeletedEvent jika diperlukan
     }
 }

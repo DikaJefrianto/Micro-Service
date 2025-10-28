@@ -1,8 +1,50 @@
+server:
+  port: 8083
+
 spring:
   application:
-    name: order # Nama unik untuk service ini
+    name: order
 
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/ # Alamat server Eureka
+  # datasource:
+  #   # ===========================
+  #   # H2 - Command / CRUD
+  #   # ===========================
+  #   command:
+  #     url: jdbc:h2:file:./target/h2db/db/order;DB_CLOSE_DELAY=-1
+  #     driver-class-name: org.h2.Driver
+  #     username: sa
+  #     password: password
+  #     platform: org.hibernate.dialect.H2Dialect
+  #     hikari:
+  #       maximum-pool-size: 10
+
+  #   # ===========================
+  #   # MySQL - Query / Read Model
+  #   # ===========================
+  #   query:
+  #     url: jdbc:mysql://localhost:3306/querydb
+  #     username: root
+  #     password:
+  #     driver-class-name: com.mysql.cj.jdbc.Driver
+  #     hikari:
+  #       maximum-pool-size: 10
+
+  jpa:
+    # Hibernate default settings bisa tetap di sini
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+h2:
+  console:
+    enabled: true
+    path: /h2-console
+
+# RabbitMQ
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest

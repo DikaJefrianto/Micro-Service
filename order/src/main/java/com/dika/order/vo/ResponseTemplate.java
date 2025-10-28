@@ -38,12 +38,12 @@ public class ResponseTemplate {
         this.order = order;
     }
 
-    public void setProduk(Produk produk) {
-        this.produk = produk;
+    public void setProduk(Object produk) {
+        this.produk = (Produk) produk;
     }
 
-    public void setPelanggan(Pelanggan pelanggan) {
-        this.pelanggan = pelanggan;
+    public void setPelanggan(Object pelanggan) {
+        this.pelanggan = (Pelanggan) pelanggan;
     }
 
 
