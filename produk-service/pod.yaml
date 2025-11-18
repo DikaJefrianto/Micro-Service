@@ -1,0 +1,14 @@
+# pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: produk-pod
+  labels:
+    app: produk-service # Label untuk ditemukan oleh Service
+spec:
+  containers:
+  - name: produk-container
+    # Ganti dengan nama image Docker Anda yang sudah dibuat
+    image: produk:v1 
+    ports:
+    - containerPort: 8081 # Port tempat aplikasi Anda mendengarkan

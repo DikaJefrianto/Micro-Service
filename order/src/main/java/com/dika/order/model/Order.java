@@ -9,15 +9,10 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDate; // Tipe data yang lebih aman
 
-import org.springframework.data.mongodb.core.mapping.Document; // MongoDB Annotation
-
 @Data
 // 1. ANOTASI JPA (Untuk MySQL - Write DB)
-@Table(name = "orders")
+@Table(name = "orders") // JPA Annotation
 @Entity
-// 2. ANOTASI MONGODB (Untuk MongoDB - Read DB/Projection)
-@Document(collection = "order_projections") 
-// 3. INTERFACE SERIALIZATION (Untuk RabbitMQ)
 public class Order implements Serializable { 
     
     private static final long serialVersionUID = 1L; 
@@ -27,13 +22,13 @@ public class Order implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    private long produkId;
-    private long pelangganId;
-    private int jumlah;
+    private Long produkId; // Changed to Long for consistency
+    private Long pelangganId; // Changed to Long for consistency
+    private Integer jumlah; // Changed to Integer for consistency
     
     // Menggunakan tipe data objek untuk konsistensi yang lebih baik antar database
     private LocalDate tanggal; 
     
     private String status;
-    private double total;
+    private Double total; // Changed to Double for consistency
 }

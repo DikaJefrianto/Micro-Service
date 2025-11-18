@@ -15,7 +15,7 @@ spring:
                           uri: lb://PRODUK-SERVICE
                           predicates: 
                             - Path=api/produk/**
-                        - id: PELANGGAN-SERVICE
+                        - id: PELANGGAN
                           uri: lb://PELANGGAN
                           predicates: 
                             - Path=api/pelanggan/**
